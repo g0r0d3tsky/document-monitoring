@@ -2,8 +2,8 @@ package repository
 
 import (
 	"context"
-	"document-monitoring/main-service/config"
 	"fmt"
+	"main-service/config"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
