@@ -6,7 +6,6 @@ package handlers
 import (
 	"bytes"
 	"compress/gzip"
-	"context"
 	"encoding/base64"
 	"fmt"
 	"net/http"
@@ -20,35 +19,6 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
-const (
-	Api_keyScopes           = "api_key.Scopes"
-	Contentstore_authScopes = "contentstore_auth.Scopes"
-)
-
-// Defines values for ContentStatus.
-const (
-	Archived  ContentStatus = "archived"
-	Available ContentStatus = "available"
-	Pending   ContentStatus = "pending"
-)
-
-// Content defines model for Content.
-type Content struct {
-	// File Binary data of the file
-	File openapi_types.File `json:"file"`
-	Id   *int64             `json:"id,omitempty"`
-
-	// Metadata Additional metadata for the file
-	Metadata *map[string]interface{} `json:"metadata,omitempty"`
-	Name     string                  `json:"name"`
-
-	// Status File status
-	Status *ContentStatus `json:"status,omitempty"`
-}
-
-// ContentStatus File status
-type ContentStatus string
-
 // User defines model for User.
 type User struct {
 	Email     *string `json:"email,omitempty"`
@@ -56,25 +26,22 @@ type User struct {
 	Id        *int64  `json:"id,omitempty"`
 	LastName  *string `json:"lastName,omitempty"`
 	Password  *string `json:"password,omitempty"`
-	Phone     *string `json:"phone,omitempty"`
 
 	// Role User Role
 	Role     *string `json:"role,omitempty"`
 	Username *string `json:"username,omitempty"`
 }
 
-// DeletecontentParams defines parameters for Deletecontent.
-type DeletecontentParams struct {
-	ApiKey *string `json:"api_key,omitempty"`
+// PostContentMultipartBody defines parameters for PostContent.
+type PostContentMultipartBody struct {
+	// File Файл для загрузки.
+	File openapi_types.File `json:"file"`
 }
 
-// UpdatecontentWithFormParams defines parameters for UpdatecontentWithForm.
-type UpdatecontentWithFormParams struct {
-	// Name Name of content that needs to be updated
-	Name *string `form:"name,omitempty" json:"name,omitempty"`
-
-	// Status Status of content that needs to be updated
-	Status *string `form:"status,omitempty" json:"status,omitempty"`
+// PutContentNameMultipartBody defines parameters for PutContentName.
+type PutContentNameMultipartBody struct {
+	// File Новый файл для загрузки.
+	File openapi_types.File `json:"file"`
 }
 
 // LoginUserParams defines parameters for LoginUser.
@@ -86,17 +53,11 @@ type LoginUserParams struct {
 	Password *string `form:"password,omitempty" json:"password,omitempty"`
 }
 
-// AddcontentJSONRequestBody defines body for Addcontent for application/json ContentType.
-type AddcontentJSONRequestBody = Content
+// PostContentMultipartRequestBody defines body for PostContent for multipart/form-data ContentType.
+type PostContentMultipartRequestBody PostContentMultipartBody
 
-// AddcontentFormdataRequestBody defines body for Addcontent for application/x-www-form-urlencoded ContentType.
-type AddcontentFormdataRequestBody = Content
-
-// UpdatecontentJSONRequestBody defines body for Updatecontent for application/json ContentType.
-type UpdatecontentJSONRequestBody = Content
-
-// UpdatecontentFormdataRequestBody defines body for Updatecontent for application/x-www-form-urlencoded ContentType.
-type UpdatecontentFormdataRequestBody = Content
+// PutContentNameMultipartRequestBody defines body for PutContentName for multipart/form-data ContentType.
+type PutContentNameMultipartRequestBody PutContentNameMultipartBody
 
 // CreateUserJSONRequestBody defines body for CreateUser for application/json ContentType.
 type CreateUserJSONRequestBody = User
@@ -112,21 +73,18 @@ type UpdateUserFormdataRequestBody = User
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
-	// Add a new content to the store
+	// Upload text or file content
 	// (POST /content)
-	Addcontent(w http.ResponseWriter, r *http.Request)
-	// Update an existing content
-	// (PUT /content)
-	Updatecontent(w http.ResponseWriter, r *http.Request)
-	// Deletes a content
-	// (DELETE /content/{contentId})
-	Deletecontent(w http.ResponseWriter, r *http.Request, contentId int64, params DeletecontentParams)
-	// Find content by ID
-	// (GET /content/{contentId})
-	GetcontentById(w http.ResponseWriter, r *http.Request, contentId int64)
-	// Updates a content in the store with form data
-	// (POST /content/{contentId})
-	UpdatecontentWithForm(w http.ResponseWriter, r *http.Request, contentId int64, params UpdatecontentWithFormParams)
+	PostContent(w http.ResponseWriter, r *http.Request)
+	// Delete content by name
+	// (DELETE /content/{name})
+	DeleteContentName(w http.ResponseWriter, r *http.Request, name string)
+	// Get content by name
+	// (GET /content/{name})
+	GetContentName(w http.ResponseWriter, r *http.Request, name string)
+	// Update content by name
+	// (PUT /content/{name})
+	PutContentName(w http.ResponseWriter, r *http.Request, name string)
 	// Create user
 	// (POST /user)
 	CreateUser(w http.ResponseWriter, r *http.Request)
@@ -151,33 +109,27 @@ type ServerInterface interface {
 
 type Unimplemented struct{}
 
-// Add a new content to the store
+// Upload text or file content
 // (POST /content)
-func (_ Unimplemented) Addcontent(w http.ResponseWriter, r *http.Request) {
+func (_ Unimplemented) PostContent(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// Update an existing content
-// (PUT /content)
-func (_ Unimplemented) Updatecontent(w http.ResponseWriter, r *http.Request) {
+// Delete content by name
+// (DELETE /content/{name})
+func (_ Unimplemented) DeleteContentName(w http.ResponseWriter, r *http.Request, name string) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// Deletes a content
-// (DELETE /content/{contentId})
-func (_ Unimplemented) Deletecontent(w http.ResponseWriter, r *http.Request, contentId int64, params DeletecontentParams) {
+// Get content by name
+// (GET /content/{name})
+func (_ Unimplemented) GetContentName(w http.ResponseWriter, r *http.Request, name string) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// Find content by ID
-// (GET /content/{contentId})
-func (_ Unimplemented) GetcontentById(w http.ResponseWriter, r *http.Request, contentId int64) {
-	w.WriteHeader(http.StatusNotImplemented)
-}
-
-// Updates a content in the store with form data
-// (POST /content/{contentId})
-func (_ Unimplemented) UpdatecontentWithForm(w http.ResponseWriter, r *http.Request, contentId int64, params UpdatecontentWithFormParams) {
+// Update content by name
+// (PUT /content/{name})
+func (_ Unimplemented) PutContentName(w http.ResponseWriter, r *http.Request, name string) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -226,14 +178,12 @@ type ServerInterfaceWrapper struct {
 
 type MiddlewareFunc func(http.Handler) http.Handler
 
-// Addcontent operation middleware
-func (siw *ServerInterfaceWrapper) Addcontent(w http.ResponseWriter, r *http.Request) {
+// PostContent operation middleware
+func (siw *ServerInterfaceWrapper) PostContent(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	ctx = context.WithValue(ctx, Contentstore_authScopes, []string{"write:contents", "read:contents"})
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.Addcontent(w, r)
+		siw.Handler.PostContent(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -243,143 +193,75 @@ func (siw *ServerInterfaceWrapper) Addcontent(w http.ResponseWriter, r *http.Req
 	handler.ServeHTTP(w, r.WithContext(ctx))
 }
 
-// Updatecontent operation middleware
-func (siw *ServerInterfaceWrapper) Updatecontent(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, Contentstore_authScopes, []string{"write:contents", "read:contents"})
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.Updatecontent(w, r)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r.WithContext(ctx))
-}
-
-// Deletecontent operation middleware
-func (siw *ServerInterfaceWrapper) Deletecontent(w http.ResponseWriter, r *http.Request) {
+// DeleteContentName operation middleware
+func (siw *ServerInterfaceWrapper) DeleteContentName(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	var err error
 
-	// ------------- Path parameter "contentId" -------------
-	var contentId int64
+	// ------------- Path parameter "name" -------------
+	var name string
 
-	err = runtime.BindStyledParameterWithOptions("simple", "contentId", chi.URLParam(r, "contentId"), &contentId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "contentId", Err: err})
-		return
-	}
-
-	ctx = context.WithValue(ctx, Contentstore_authScopes, []string{"write:contents", "read:contents"})
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params DeletecontentParams
-
-	headers := r.Header
-
-	// ------------- Optional header parameter "api_key" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("api_key")]; found {
-		var ApiKey string
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "api_key", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "api_key", valueList[0], &ApiKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "api_key", Err: err})
-			return
-		}
-
-		params.ApiKey = &ApiKey
-
-	}
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.Deletecontent(w, r, contentId, params)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r.WithContext(ctx))
-}
-
-// GetcontentById operation middleware
-func (siw *ServerInterfaceWrapper) GetcontentById(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	var err error
-
-	// ------------- Path parameter "contentId" -------------
-	var contentId int64
-
-	err = runtime.BindStyledParameterWithOptions("simple", "contentId", chi.URLParam(r, "contentId"), &contentId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "contentId", Err: err})
-		return
-	}
-
-	ctx = context.WithValue(ctx, Api_keyScopes, []string{})
-
-	ctx = context.WithValue(ctx, Contentstore_authScopes, []string{"write:contents", "read:contents"})
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetcontentById(w, r, contentId)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r.WithContext(ctx))
-}
-
-// UpdatecontentWithForm operation middleware
-func (siw *ServerInterfaceWrapper) UpdatecontentWithForm(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	var err error
-
-	// ------------- Path parameter "contentId" -------------
-	var contentId int64
-
-	err = runtime.BindStyledParameterWithOptions("simple", "contentId", chi.URLParam(r, "contentId"), &contentId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "contentId", Err: err})
-		return
-	}
-
-	ctx = context.WithValue(ctx, Contentstore_authScopes, []string{"write:contents", "read:contents"})
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params UpdatecontentWithFormParams
-
-	// ------------- Optional query parameter "name" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "name", r.URL.Query(), &params.Name)
+	err = runtime.BindStyledParameterWithOptions("simple", "name", chi.URLParam(r, "name"), &name, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
 	if err != nil {
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "name", Err: err})
 		return
 	}
 
-	// ------------- Optional query parameter "status" -------------
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteContentName(w, r, name)
+	}))
 
-	err = runtime.BindQueryParameter("form", true, false, "status", r.URL.Query(), &params.Status)
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r.WithContext(ctx))
+}
+
+// GetContentName operation middleware
+func (siw *ServerInterfaceWrapper) GetContentName(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	var err error
+
+	// ------------- Path parameter "name" -------------
+	var name string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "name", chi.URLParam(r, "name"), &name, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "status", Err: err})
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "name", Err: err})
 		return
 	}
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.UpdatecontentWithForm(w, r, contentId, params)
+		siw.Handler.GetContentName(w, r, name)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r.WithContext(ctx))
+}
+
+// PutContentName operation middleware
+func (siw *ServerInterfaceWrapper) PutContentName(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	var err error
+
+	// ------------- Path parameter "name" -------------
+	var name string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "name", chi.URLParam(r, "name"), &name, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "name", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PutContentName(w, r, name)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -647,19 +529,16 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	}
 
 	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/content", wrapper.Addcontent)
+		r.Post(options.BaseURL+"/content", wrapper.PostContent)
 	})
 	r.Group(func(r chi.Router) {
-		r.Put(options.BaseURL+"/content", wrapper.Updatecontent)
+		r.Delete(options.BaseURL+"/content/{name}", wrapper.DeleteContentName)
 	})
 	r.Group(func(r chi.Router) {
-		r.Delete(options.BaseURL+"/content/{contentId}", wrapper.Deletecontent)
+		r.Get(options.BaseURL+"/content/{name}", wrapper.GetContentName)
 	})
 	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/content/{contentId}", wrapper.GetcontentById)
-	})
-	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/content/{contentId}", wrapper.UpdatecontentWithForm)
+		r.Put(options.BaseURL+"/content/{name}", wrapper.PutContentName)
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/user", wrapper.CreateUser)
@@ -686,43 +565,47 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

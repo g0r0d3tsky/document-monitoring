@@ -3,7 +3,9 @@ package middleware
 import (
 	"context"
 	"log/slog"
+	"main-service/internal/api/handlers"
 	"main-service/internal/domain"
+	"main-service/internal/usecase"
 	"net/http"
 	"strconv"
 	"strings"
@@ -28,34 +30,40 @@ func NewUserMiddleware(service UserService) *UserMiddleware {
 	return &UserMiddleware{service: service}
 }
 
-func (m *UserMiddleware) Authenticate(next http.HandlerFunc) http.HandlerFunc {
+func (m *UserMiddleware) Authenticate(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("Vary", "Authorization")
 		authorizationHeader := r.Header.Get("Authorization")
 
 		if authorizationHeader == "" {
+			slog.Warn("Authorization header is missing")
 			handlers.NewErrorResponse(w, http.StatusUnauthorized, "empty auth header")
 			return
 		}
 
 		headerParts := strings.Split(authorizationHeader, " ")
 		if len(headerParts) != 2 || headerParts[0] != "Bearer" {
+			slog.Warn("Invalid Authorization header format")
 			handlers.NewErrorResponse(w, http.StatusUnauthorized, "invalid auth header")
 			return
 		}
 
-		if len(headerParts[1]) == 0 || len(strings.Split(headerParts[1], "")) == 0 {
+		token := headerParts[1]
+		if len(token) == 0 {
+			slog.Warn("Token is empty")
 			handlers.NewErrorResponse(w, http.StatusUnauthorized, "token is empty")
 			return
 		}
 
-		userInfo, err := m.service.ParseToken(headerParts[1])
-
+		userInfo, err := m.service.ParseToken(token)
 		if err != nil {
+			slog.Warn("Failed to parse token", "error", err)
 			handlers.NewErrorResponse(w, http.StatusUnauthorized, err.Error())
 			return
 		}
+
 		ctx := context.WithValue(r.Context(), UserCtx, userInfo)
+
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

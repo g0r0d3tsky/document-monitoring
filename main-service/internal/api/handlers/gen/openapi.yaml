@@ -2,204 +2,181 @@ openapi: 3.0.3
 info:
   title: Swagger contentstore - OpenAPI 3.0
   description: |-
-    This is a sample content Store Server based on the OpenAPI 3.0 specification.  You can find out more about
-    Swagger at [https://swagger.io](https://swagger.io). In the third iteration of the content store, we've switched to the design first approach!
-    You can now help us improve the API whether it's by making changes to the definition itself or to the code.
-    That way, with time, we can improve the API in general, and expose some of the new features in OAS3.
-
-    _If you're looking for the Swagger 2.0/OAS 2.0 version of contentstore, then click [here](https://editor.swagger.io/?url=https://contentstore.swagger.io/v2/swagger.yaml). Alternatively, you can load via the `Edit > Load contentstore OAS 2.0` menu option!_
+    The Document Monitoring Service is designed to provide continuous tracking and oversight of critical documents throughout their lifecycle. 
+    This service enables users to monitor changes, updates, and the status of documents in real time, ensuring compliance, version control, and security. 
+    Key features include automated alerts for document modifications, role-based access control, and comprehensive audit logs for transparency.
+    Whether used for legal, financial, or operational documents, the service ensures that all document-related activities are tracked, helping organizations maintain control, meet regulatory requirements, and enhance collaboration.
     
     Some useful links:
-    - [The content Store repository](https://github.com/swagger-api/swagger-contentstore)
-    - [The source API definition for the content Store](https://github.com/swagger-api/swagger-contentstore/blob/master/src/main/resources/openapi.yaml)
+    - [repository](https://github.com/g0r0d3tsky/document-monitoring)
   termsOfService: http://swagger.io/terms/
   contact:
-    email: apiteam@swagger.io
+    email: gorodetskiy39@gmail.com
   license:
     name: Apache 2.0
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   version: 1.0.11
-externalDocs:
-  description: Find out more about Swagger
-  url: http://swagger.io
 servers:
-  - url: https://contentstore3.swagger.io/api/v3
-tags:
-  - name: content
-    description: Everything about your contents
-    externalDocs:
-      description: Find out more
-      url: http://swagger.io
+  - url: /api/v1
 paths:
   /content:
-    put:
-      tags:
-        - content
-      summary: Update an existing content
-      description: Update an existing content by Id
-      operationId: updatecontent
-      requestBody:
-        description: Update an existent content in the store
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Content'
-          application/xml:
-            schema:
-              $ref: '#/components/schemas/Content'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/Content'
-        required: true
-      responses:
-        '200':
-          description: Successful operation
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Content'          
-            application/xml:
-              schema:
-                $ref: '#/components/schemas/Content'
-        '400':
-          description: Invalid ID supplied
-        '404':
-          description: content not found
-        '422':
-          description: Validation exception
-      security:
-        - contentstore_auth:
-            - write:contents
-            - read:contents
     post:
       tags:
         - content
-      summary: Add a new content to the store
-      description: Add a new content to the store
-      operationId: addcontent
+      summary: Upload text or file content
+      description: >
+        Отправьте либо обычный текст (Content-Type: text/plain), либо файл любого расширения через multipart/form-data.
       requestBody:
-        description: Create a new content in the store
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Content'
-          application/xml:
-            schema:
-              $ref: '#/components/schemas/Content'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/Content'
         required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: "Файл для загрузки."
+                  example: "<binary data>"
+              required:
+                - file
       responses:
         '200':
-          description: Successful operation
+          description: Успешный ответ
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Content'          
-            application/xml:
-              schema:
-                $ref: '#/components/schemas/Content'
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Контент успешно загружен."
         '400':
-          description: Invalid input
-        '422':
-          description: Validation exception
-      security:
-        - contentstore_auth:
-            - write:contents
-            - read:contents
-  /content/{contentId}:
+          description: Некорректный запрос
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Недопустимый тип содержимого."
+
+  /content/{name}:
+    parameters:
+      - name: name
+        in: path
+        description: Уникальное имя контента
+        required: true
+        schema:
+          type: string
     get:
       tags:
         - content
-      summary: Find content by ID
-      description: Returns a single content
-      operationId: getcontentById
-      parameters:
-        - name: contentId
-          in: path
-          description: ID of content to return
-          required: true
-          schema:
-            type: integer
-            format: int64
+      summary: Get content by name
+      description: >
+        Получить содержимое по его уникальному имени. Если содержимое является текстом, оно будет возвращено из MongoDB.
+        Если содержимое является файлом, будет инициирована загрузка файла с сервера или из MongoDB.
       responses:
         '200':
-          description: successful operation
+          description: Содержимое успешно найдено
+          content:
+            multipart/form-data:
+              schema:
+                type: object
+
+
+        '404':
+          description: Контент не найден
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Content'          
-            application/xml:
-              schema:
-                $ref: '#/components/schemas/Content'
-        '400':
-          description: Invalid ID supplied
-        '404':
-          description: content not found
-      security:
-        - api_key: []
-        - contentstore_auth:
-            - write:contents
-            - read:contents
-    post:
-      tags:
-        - content
-      summary: Updates a content in the store with form data
-      description: ''
-      operationId: updatecontentWithForm
-      parameters:
-        - name: contentId
-          in: path
-          description: ID of content that needs to be updated
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: name
-          in: query
-          description: Name of content that needs to be updated
-          schema:
-            type: string
-        - name: status
-          in: query
-          description: Status of content that needs to be updated
-          schema:
-            type: string
-      responses:
-        '400':
-          description: Invalid input
-      security:
-        - contentstore_auth:
-            - write:contents
-            - read:contents
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Контент с указанным именем не найден."
     delete:
       tags:
         - content
-      summary: Deletes a content
-      description: delete a content
-      operationId: deletecontent
-      parameters:
-        - name: api_key
-          in: header
-          description: ''
-          required: false
-          schema:
-            type: string
-        - name: contentId
-          in: path
-          description: content id to delete
-          required: true
-          schema:
-            type: integer
-            format: int64
+      summary: Delete content by name
+      description: >
+        Удалить содержимое по его уникальному имени. Если содержимое является текстом, оно будет удалено из MongoDB.
+        Если содержимое является файлом, файл будет удален с сервера или из MongoDB, а запись удалена из PostgreSQL.
       responses:
+        '200':
+          description: Контент успешно удален
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Контент успешно удален."
+        '404':
+          description: Контент не найден
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Контент с указанным именем не найден."
+    put:
+      tags:
+        - content
+      summary: Update content by name
+      description: >
+        Обновить содержимое по его уникальному имени. Можно обновить текстовое содержимое или заменить файл.
+        При обновлении текста, новое текстовое содержимое будет сохранено в MongoDB.
+        При обновлении файла, старый файл будет удален, а новый файл сохранен на сервере или в MongoDB.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: "Новый файл для загрузки."
+                  example: "<binary data>"
+              required:
+                - file
+      responses:
+        '200':
+          description: Контент успешно обновлен
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Контент успешно обновлен."
         '400':
-          description: Invalid content value
-      security:
-        - contentstore_auth:
-            - write:contents
-            - read:contents
+          description: Некорректный запрос
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Некорректные данные для обновления."
+        '404':
+          description: Контент не найден
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Контент с указанным именем не найден."
   /user:
     post:
       tags:
@@ -303,7 +280,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/User'          
+                $ref: '#/components/schemas/User'
             application/xml:
               schema:
                 $ref: '#/components/schemas/User'
@@ -359,7 +336,7 @@ paths:
           description: User not found
 components:
   schemas:
-   
+
     User:
       type: object
       properties:
@@ -389,7 +366,7 @@ components:
           example: "admin"
       xml:
         name: user
-    
+
     Content:
       type: object
       required:
@@ -450,8 +427,4 @@ components:
       name: Authorization
       in: header
       description: JWT Authorization header using the Bearer scheme
-        
-    api_key:
-      type: apiKey
-      name: api_key
-      in: header
+

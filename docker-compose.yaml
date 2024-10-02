@@ -20,98 +20,87 @@ services:
     networks:
       - internal
 
+
+  zoo1:
+      image: confluentinc/cp-zookeeper:7.3.2
+      hostname: zoo1
+      container_name: zoo-url
+      ports:
+        - "2181:2181"
+      environment:
+        ZOOKEEPER_CLIENT_PORT: 2181
+        ZOOKEEPER_SERVER_ID: 1
+        ZOOKEEPER_SERVERS: zoo1:2888:3888
+      networks:
+        - internal
+
+  kafka1:
+      image: confluentinc/cp-kafka:7.3.2
+      hostname: kafka1
+      container_name: kafka1-url
+      ports:
+        - "9092:9092"
+        - "29092:29092"
+        - "9999:9999"
+      environment:
+        KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka1:19092,EXTERNAL://${DOCKER_HOST_IP:-127.0.0.1}:9092,DOCKER://host.docker.internal:29092
+        KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,DOCKER:PLAINTEXT
+        KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+        KAFKA_ZOOKEEPER_CONNECT: "zoo1:2181"
+        KAFKA_BROKER_ID: 1
+        KAFKA_LOG4J_LOGGERS: "kafka.controller=INFO,kafka.producer.async.DefaultEventHandler=INFO,state.change.logger=INFO"
+        KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+        KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+        KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+        KAFKA_JMX_PORT: 9999
+        KAFKA_JMX_HOSTNAME: ${DOCKER_HOST_IP:-127.0.0.1}
+        KAFKA_AUTHORIZER_CLASS_NAME: kafka.security.authorizer.AclAuthorizer
+        KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "true"
+      healthcheck:
+        test: kafka-topics --bootstrap-server kafka1:9092 --list
+        interval: 30s
+        timeout: 10s
+        retries: 3
+
+      depends_on:
+        - zoo1
+      networks:
+        - internal
+  mongodb:
+    image: mongo
+    container_name: mongodb
+    hostname: mongodb
+    volumes:
+      - ./mongodb/initdb.d/mongodb-init.js:/docker-entrypoint-initdb.d/mongodb-init.js:ro
+      - mongodb-data:/data/db/
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: root
+    ports:
+      - "27017:27017"
+    networks:
+      - internal
+
+  mongo-express:
+    image: mongo-express
+    restart: always
+    ports:
+      - 8081:8081
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: root
+      ME_CONFIG_MONGODB_ADMINPASSWORD: example
+      ME_CONFIG_MONGODB_URL: mongodb://root:example@mongo:27017/
+      ME_CONFIG_BASICAUTH: false
+    networks:
+        - internal
+    depends_on:
+        - mongodb
+
+
 volumes:
   postgres_data:
-
-#  zoo1:
-#    image: confluentinc/cp-zookeeper:7.3.2
-#    hostname: zoo1
-#    container_name: zoo-url
-#    ports:
-#      - "2181:2181"
-#    environment:
-#      ZOOKEEPER_CLIENT_PORT: 2181
-#      ZOOKEEPER_SERVER_ID: 1
-#      ZOOKEEPER_SERVERS: zoo1:2888:3888
-#    networks:
-#      - internal
-#
-#  kafka1:
-#    image: confluentinc/cp-kafka:7.3.2
-#    hostname: kafka1
-#    container_name: kafka1-url
-#    ports:
-#      - "9092:9092"
-#      - "29092:29092"
-#      - "9999:9999"
-#    environment:
-#      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka1:19092,EXTERNAL://${DOCKER_HOST_IP:-127.0.0.1}:9092,DOCKER://host.docker.internal:29092
-#      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,DOCKER:PLAINTEXT
-#      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
-#      KAFKA_ZOOKEEPER_CONNECT: "zoo1:2181"
-#      KAFKA_BROKER_ID: 1
-#      KAFKA_LOG4J_LOGGERS: "kafka.controller=INFO,kafka.producer.async.DefaultEventHandler=INFO,state.change.logger=INFO"
-#      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-#      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
-#      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
-#      KAFKA_JMX_PORT: 9999
-#      KAFKA_JMX_HOSTNAME: ${DOCKER_HOST_IP:-127.0.0.1}
-#      KAFKA_AUTHORIZER_CLASS_NAME: kafka.security.authorizer.AclAuthorizer
-#      KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "true"
-#    healthcheck:
-#      test: kafka-topics --bootstrap-server kafka1:9092 --list
-#      interval: 30s
-#      timeout: 10s
-#      retries: 3
-#
-#    depends_on:
-#      - zoo1
-#    networks:
-#      - internal
-#
-#
-#  mongodb:
-#    image: mongo:latest
-#    container_name: mongodb
-#    hostname: mongodb
-#    volumes:
-#      - ./mongodb/initdb.d/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
-#      - mongodb-data:/data/db/
-#      - mongodb-log:/var/log/mongodb/
-#    env_file:
-#      - main-service/.env
-#    environment:
-#      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
-#      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
-#    ports:
-#      - "27017:27017"
-#    networks:
-#      - internal
-#
-#  mongo-express:
-#      image: mongo-express:latest
-#      container_name: mongo-express
-#      restart: always
-#      environment:
-#        ME_CONFIG_MONGODB_ADMINUSERNAME: ${MONGO_INITDB_ROOT_USERNAME}
-#        ME_CONFIG_MONGODB_ADMINPASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
-#        ME_CONFIG_MONGODB_PORT: 27017
-#        ME_CONFIG_MONGODB_SERVER: 'mongodb'
-#        ME_CONFIG_BASICAUTH_USERNAME: ${MONGO_EXPRESS_USERNAME}
-#        ME_CONFIG_BASICAUTH_PASSWORD: ${MONGO_EXPRESS_PASSWORD}
-#      ports:
-#        - 8081:8081
-#      networks:
-#        - internal
-#      depends_on:
-#        - mongodb
-#
-#volumes:
-#  mongodb-data:
-#    driver: local
-#
-#  mongodb-log:
-#    driver: local
+  mongodb-data:
+    driver: local
 
 
 networks:

@@ -1,4 +1,4 @@
-package mongo
+package mongodb
 
 import (
 	"context"
@@ -17,5 +17,5 @@ func Connect(ctx context.Context, c *config.Config) (db *mongo.Database, err err
 	if err = client.Ping(ctx, nil); err != nil {
 		return nil, err
 	}
-	return client.Database(c.DBName), nil
+	return client.Database(c.MongoDB.DBName), nil
 }
